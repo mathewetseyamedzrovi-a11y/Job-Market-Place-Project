@@ -65,4 +65,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Job::class, 'poster_id');
     }
-} // <-- This closing brace ends the class
+
+    /**
+     * Get all job applications submitted by this user (as a worker).
+     */
+    public function applications()
+    {
+        return $this->hasMany(Application::class, 'worker_id');
+    }
+}

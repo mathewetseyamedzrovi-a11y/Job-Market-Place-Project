@@ -11,14 +11,55 @@ use Illuminate\Support\Facades\Validator;
 class JobController extends Controller
 {
     /**
-     * Display a listing of all jobs.
+     * Display a listing of all jobs with search and filters.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $jobs = Job::with(['poster', 'category'])->latest()->get();
+        // Start query with relationships and only open jobs
+        $query = Job::with(['poster', 'category'])->where('status', 'open');
+        
+        // Filter by category
+        if ($request->has('category')) {
+            $query->where('category_id', $request->category);
+        }
+        
+        // Filter by location
+        if ($request->has('location')) {
+            $query->where('location', 'LIKE', '%' . $request->location . '%');
+        }
+        
+        // Filter by minimum budget
+        if ($request->has('min_budget')) {
+            $query->where('budget', '>=', $request->min_budget);
+        }
+        
+        // Filter by maximum budget
+        if ($request->has('max_budget')) {
+            $query->where('budget', '<=', $request->max_budget);
+        }
+        
+        // Search by keyword in title or description
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'LIKE', '%' . $search . '%')
+                  ->orWhere('description', 'LIKE', '%' . $search . '%');
+            });
+        }
+        
+        // Get results ordered by newest first
+        $jobs = $query->latest()->get();
         
         return response()->json([
             'success' => true,
+            'filters_applied' => [
+                'category' => $request->category ?? null,
+                'location' => $request->location ?? null,
+                'min_budget' => $request->min_budget ?? null,
+                'max_budget' => $request->max_budget ?? null,
+                'search' => $request->search ?? null,
+            ],
+            'count' => $jobs->count(),
             'jobs' => $jobs
         ]);
     }
